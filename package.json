@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "cd src && node index.js",
+    "lint": "eslint .",
     "test": "jest"
   },
   "license": "MIT",
