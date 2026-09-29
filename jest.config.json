@@ -1,5 +1,4 @@
 {
-    "collectiveCoverage":true,
     "coverageReporters": ["json-summary", "text"],
    
     "collectCoverage": true,
