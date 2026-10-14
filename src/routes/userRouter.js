@@ -66,7 +66,7 @@ userRouter.put(
     const { name, email, password } = req.body;
     const userId = Number(req.params.userId);
     const user = req.user;
-    if (user.id !== userId && !user.isRole(Role.Admin)) {
+    if (user.id !== userId) {
       return res.status(403).json({ message: 'unauthorized' });
     }
 

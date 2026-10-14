@@ -105,15 +105,16 @@ test('user cannot update someone else', async () => {
   expect(res.body.message).toBe('unauthorized');
 });
 
-test('admin can update another user', async () => {
-  const admin = { name: 'user admin', email: 'useradmin@test.com', password: 'admin' };
-  await DB.addUser({ ...admin, roles: [{ role: Role.Admin }] });
-  const adminToken = (await request(app).put('/api/auth').send(admin)).body.token;
+test('admin cannot update another user', async () => {
+  const admin = await createAdmin();
   const user = await registerUser();
 
-  const res = await request(app).put(`/api/user/${user.id}`).set('Authorization', `Bearer ${adminToken}`).send({ name: 'admin renamed', email: user.email });
-  expect(res.status).toBe(200);
-  expect(res.body.user).toMatchObject({ id: user.id, name: 'admin renamed', email: user.email });
+  const res = await request(app).put(`/api/user/${user.id}`).set('Authorization', `Bearer ${admin.token}`).send({ name: 'admin renamed', email: user.email });
+  expect(res.status).toBe(403);
+  expect(res.body.message).toBe('unauthorized');
+
+  const meRes = await request(app).get('/api/user/me').set('Authorization', `Bearer ${user.token}`);
+  expect(meRes.body).toMatchObject({ id: user.id, name: user.name, email: user.email });
 });
 
 test('admin can delete a user', async () => {

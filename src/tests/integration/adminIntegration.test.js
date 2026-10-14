@@ -47,6 +47,18 @@ test('admin cannot delete themselves', async () => {
   expect(loginRes.status).toBe(200);
 });
 
+test('admin cannot update another user', async () => {
+  const user = await registerUser();
+
+  const updateRes = await request(app).put(`/api/user/${user.id}`).set('Authorization', `Bearer ${admin.token}`).send({ name: `renamed-${randomName()}`, email: user.email });
+  expect(updateRes.status).toBe(403);
+  expect(updateRes.body).toEqual({ message: 'unauthorized' });
+
+  const loginRes = await request(app).put('/api/auth').send({ email: user.email, password: user.password });
+  expect(loginRes.status).toBe(200);
+  expect(loginRes.body.user).toMatchObject({ id: user.id, name: user.name, email: user.email });
+});
+
 test('non-admin cannot delete a user', async () => {
   const user = await registerUser();
   const other = await registerUser();
