@@ -57,6 +57,10 @@ function createMockMysql() {
     [/^SELECT \* FROM user WHERE email=\?$/, ([email]) => select('user', (u) => u.email === email)],
     [/^SELECT id, name FROM user WHERE email=\?$/, ([email]) => select('user', (u) => u.email === email, ['id', 'name'])],
     [
+      /^SELECT id, name, email FROM user WHERE name LIKE \? ORDER BY id LIMIT (\d+) OFFSET (\d+)$/,
+      ([pattern], [, limit, offset]) => select('user', (u) => like(u.name, pattern), ['id', 'name', 'email']).slice(Number(offset), Number(offset) + Number(limit)),
+    ],
+    [
       /^UPDATE user SET (.+) WHERE id=(\d+)$/,
       (params, [, assignments, id]) => {
         const user = tables.user.find((u) => u.id === Number(id));

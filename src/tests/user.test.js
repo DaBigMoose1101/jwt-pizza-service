@@ -8,13 +8,26 @@ const { expectValidJwt } = require('./testUtils.js');
 
 let userCount = 0;
 
-async function registerUser() {
+async function registerUser(name) {
   userCount++;
-  const user = { name: `user${userCount}`, email: `user${userCount}@test.com`, password: 'secret' };
+  const user = { name: name ?? `user${userCount}`, email: `user${userCount}@test.com`, password: 'secret' };
   const res = await request(app).post('/api/auth').send(user);
   expect(res.status).toBe(200);
   expectValidJwt(res.body.token);
   return { ...user, id: res.body.user.id, token: res.body.token };
+}
+
+async function createAdmin() {
+  userCount++;
+  const admin = { name: `admin${userCount}`, email: `admin${userCount}@test.com`, password: 'admin' };
+  await DB.addUser({ ...admin, roles: [{ role: Role.Admin }] });
+  const res = await request(app).put('/api/auth').send(admin);
+  expect(res.status).toBe(200);
+  return { ...admin, id: res.body.user.id, token: res.body.token };
+}
+
+function listUsers(token, query) {
+  return request(app).get(`/api/user?${query}`).set('Authorization', `Bearer ${token}`);
 }
 
 test('register requires name, email, and password', async () => {
@@ -102,12 +115,52 @@ test('admin can update another user', async () => {
   expect(res.body.user).toMatchObject({ id: user.id, name: 'admin renamed', email: user.email });
 });
 
-test('list and delete users are not implemented yet', async () => {
+test('delete user is not implemented yet', async () => {
   const user = await registerUser();
-
-  const listRes = await request(app).get('/api/user').set('Authorization', `Bearer ${user.token}`);
-  expect(listRes.body).toEqual({ message: 'not implemented', users: [], more: false });
 
   const deleteRes = await request(app).delete(`/api/user/${user.id}`).set('Authorization', `Bearer ${user.token}`);
   expect(deleteRes.body).toEqual({ message: 'not implemented' });
 });
+
+test('list users unauthorized', async () => {
+  const listUsersRes = await request(app).get('/api/user');
+  expect(listUsersRes.status).toBe(401);
+});
+
+test('admin can list a page of users', async () => {
+  const admin = await createAdmin();
+  const users = [await registerUser('pager a'), await registerUser('pager b'), await registerUser('pager c')];
+
+  const res = await listUsers(admin.token, 'page=1&limit=2&name=pager*');
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({
+    users: users.slice(0, 2).map(({ id, name, email }) => ({ id, name, email, roles: [{ role: Role.Diner }] })),
+    more: true,
+  });
+});
+
+test('list users requires the admin role', async () => {
+  const user = await registerUser();
+
+  const res = await listUsers(user.token, 'page=1&limit=10&name=*');
+  expect(res.status).toBe(403);
+  expect(res.body).toEqual({ message: 'unauthorized' });
+});
+
+test('next page of users continues after the last user of the previous page', async () => {
+  const admin = await createAdmin();
+  await registerUser('next a');
+  await registerUser('next b');
+  await registerUser('next c');
+
+  const firstPage = await listUsers(admin.token, 'page=1&limit=2&name=next*');
+  expect(firstPage.body.more).toBe(true);
+  const lastName = firstPage.body.users.at(-1).name;
+  expect(lastName).toBe('next b');
+
+  const nextPage = await listUsers(admin.token, 'page=2&limit=2&name=next*');
+  expect(nextPage.status).toBe(200);
+  expect(nextPage.body.more).toBe(false);
+  expect(nextPage.body.users.map((u) => u.name)).toEqual(['next c']);
+});
+
