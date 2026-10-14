@@ -46,7 +46,7 @@ jobs:
                 host: '127.0.0.1',
                 user: 'root',
                 password: 'tempdbpassword',
-                database: 'pizza',
+                database: process.env.DB_NAME ?? 'pizza',
                 connectTimeout: 60000,
               },
               listPerPage: 10,
