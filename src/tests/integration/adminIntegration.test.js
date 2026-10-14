@@ -24,13 +24,36 @@ test('admin can page through the list of users', async () => {
   expect(nextPage.body).toEqual({ users: expected.slice(2), more: false });
 });
 
-// Delete user is not implemented yet, so this test is expected to fail. Change test.failing to test once it is.
-test.failing('admin can delete a user', async () => {
+test('admin can delete a user', async () => {
   const user = await registerUser();
 
   const deleteRes = await request(app).delete(`/api/user/${user.id}`).set('Authorization', `Bearer ${admin.token}`);
   expect(deleteRes.status).toBe(200);
+  expect(deleteRes.body).toEqual({ message: 'user deleted' });
+
+  const meRes = await request(app).get('/api/user/me').set('Authorization', `Bearer ${user.token}`);
+  expect(meRes.status).toBe(401);
 
   const loginRes = await request(app).put('/api/auth').send({ email: user.email, password: user.password });
   expect(loginRes.status).toBe(404);
+});
+
+test('admin cannot delete themselves', async () => {
+  const deleteRes = await request(app).delete(`/api/user/${admin.id}`).set('Authorization', `Bearer ${admin.token}`);
+  expect(deleteRes.status).toBe(403);
+  expect(deleteRes.body).toEqual({ message: 'admins cannot delete themselves' });
+
+  const loginRes = await request(app).put('/api/auth').send({ email: admin.email, password: admin.password });
+  expect(loginRes.status).toBe(200);
+});
+
+test('non-admin cannot delete a user', async () => {
+  const user = await registerUser();
+  const other = await registerUser();
+
+  const deleteRes = await request(app).delete(`/api/user/${other.id}`).set('Authorization', `Bearer ${user.token}`);
+  expect(deleteRes.status).toBe(403);
+
+  const loginRes = await request(app).put('/api/auth').send({ email: other.email, password: other.password });
+  expect(loginRes.status).toBe(200);
 });

@@ -60,6 +60,7 @@ test('get the authenticated user', async () => {
 test('requests without a valid token are unauthorized', async () => {
   expect((await request(app).get('/api/user/me')).status).toBe(401);
   expect((await request(app).get('/api/user/me').set('Authorization', 'Bearer not.a.token')).status).toBe(401);
+  expect((await request(app).delete('/api/user/1')).status).toBe(401);
 });
 
 test('tampered token is rejected', async () => {
@@ -115,11 +116,53 @@ test('admin can update another user', async () => {
   expect(res.body.user).toMatchObject({ id: user.id, name: 'admin renamed', email: user.email });
 });
 
-test('delete user is not implemented yet', async () => {
+test('admin can delete a user', async () => {
+  const admin = await createAdmin();
   const user = await registerUser();
 
-  const deleteRes = await request(app).delete(`/api/user/${user.id}`).set('Authorization', `Bearer ${user.token}`);
-  expect(deleteRes.body).toEqual({ message: 'not implemented' });
+  const res = await request(app).delete(`/api/user/${user.id}`).set('Authorization', `Bearer ${admin.token}`);
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ message: 'user deleted' });
+
+  const meRes = await request(app).get('/api/user/me').set('Authorization', `Bearer ${user.token}`);
+  expect(meRes.status).toBe(401);
+
+  const loginRes = await request(app).put('/api/auth').send({ email: user.email, password: user.password });
+  expect(loginRes.status).toBe(404);
+});
+
+test('non-admin cannot delete a user', async () => {
+  const user = await registerUser();
+  const other = await registerUser();
+
+  const otherRes = await request(app).delete(`/api/user/${other.id}`).set('Authorization', `Bearer ${user.token}`);
+  expect(otherRes.status).toBe(403);
+  expect(otherRes.body).toEqual({ message: 'unauthorized' });
+
+  const selfRes = await request(app).delete(`/api/user/${user.id}`).set('Authorization', `Bearer ${user.token}`);
+  expect(selfRes.status).toBe(403);
+
+  const loginRes = await request(app).put('/api/auth').send({ email: other.email, password: other.password });
+  expect(loginRes.status).toBe(200);
+});
+
+test('admin cannot delete themselves', async () => {
+  const admin = await createAdmin();
+
+  const res = await request(app).delete(`/api/user/${admin.id}`).set('Authorization', `Bearer ${admin.token}`);
+  expect(res.status).toBe(403);
+  expect(res.body).toEqual({ message: 'admins cannot delete themselves' });
+
+  const meRes = await request(app).get('/api/user/me').set('Authorization', `Bearer ${admin.token}`);
+  expect(meRes.status).toBe(200);
+});
+
+test('deleting an unknown user fails', async () => {
+  const admin = await createAdmin();
+
+  const res = await request(app).delete('/api/user/999999').set('Authorization', `Bearer ${admin.token}`);
+  expect(res.status).toBe(404);
+  expect(res.body.message).toBe('unknown user');
 });
 
 test('list users unauthorized', async () => {

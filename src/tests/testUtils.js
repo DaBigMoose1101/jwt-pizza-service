@@ -71,14 +71,18 @@ function createMockMysql() {
       },
     ],
 
+    [/^DELETE FROM user WHERE id=\?$/, ([id]) => remove('user', (u) => u.id === id)],
+
     [/^INSERT INTO userRole /, ([userId, role, objectId]) => insert('userRole', { userId, role, objectId })],
     [/^SELECT \* FROM userRole WHERE userId=\?$/, ([userId]) => select('userRole', (r) => r.userId === userId)],
     [/^SELECT objectId FROM userRole WHERE role='franchisee' AND userId=\?$/, ([userId]) => select('userRole', (r) => r.role === 'franchisee' && r.userId === userId, ['objectId'])],
     [/^DELETE FROM userRole WHERE objectId=\?$/, ([objectId]) => remove('userRole', (r) => r.objectId === objectId)],
+    [/^DELETE FROM userRole WHERE userId=\?$/, ([userId]) => remove('userRole', (r) => r.userId === userId)],
 
     [/^INSERT INTO auth /, ([token, userId]) => (tables.auth.some((a) => a.token === token) ? { affectedRows: 0 } : insert('auth', { token, userId }))],
     [/^SELECT userId FROM auth WHERE token=\?$/, ([token]) => select('auth', (a) => a.token === token, ['userId'])],
     [/^DELETE FROM auth WHERE token=\?$/, ([token]) => remove('auth', (a) => a.token === token)],
+    [/^DELETE FROM auth WHERE userId=\?$/, ([userId]) => remove('auth', (a) => a.userId === userId)],
 
     [/^INSERT INTO franchise /, ([name]) => insert('franchise', { name })],
     [
