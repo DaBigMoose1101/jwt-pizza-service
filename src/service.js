@@ -21,9 +21,9 @@ app.use((req, res, next) => {
 
 const apiRouter = express.Router();
 app.use('/api', apiRouter);
-apiRouter.use('/auth', authRouter);
+apiRouter.use('/auth', metrics.authTracker, authRouter);
 apiRouter.use('/user', userRouter);
-apiRouter.use('/order', orderRouter);
+apiRouter.use('/order', metrics.pizzaTracker, orderRouter);
 apiRouter.use('/franchise', franchiseRouter);
 
 apiRouter.use('/docs', (req, res) => {
