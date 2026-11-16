@@ -6,9 +6,11 @@ const userRouter = require('./routes/userRouter.js');
 const version = require('./version.json');
 const config = require('./config.js');
 const metrics = require('./metrics.js');
+const logger = require('./logger.js');
 
 const app = express();
 app.use(express.json());
+app.use(logger.httpLogger);
 app.use(metrics.requestTracker);
 app.use(setAuthUser);
 app.use((req, res, next) => {
@@ -46,6 +48,8 @@ app.use('*', (req, res) => {
     message: 'unknown endpoint',
   });
 });
+
+app.use(logger.errorLogger);
 
 // Default error handler for all exceptions and errors.
 app.use((err, req, res, next) => {
